@@ -2,6 +2,9 @@ type Query {
     info: String!
     feed: [Link!]!
 }
+type Mutation {
+    createLink(url: String!, description: String!): Link!
+}
 type Link {
     id: ID!
     description: String!

@@ -1,51 +1,48 @@
 const { ApolloServer } = require('apollo-server')
+const { PrismaClient } = require('@prisma/client')
 const fs = require('fs')
 const path = require('path')
-
-let links = [{
-    id: 'link-0',
-    description: 'First link',
-    url: 'https://www.example1.com',
-}]
 
 const resolvers = {
     Query: {
         info: () => 'This is a sample API cloning Hackernews',
-        feed: () => links,
+        feed: async (parent, args, context) => {
+            return context.prisma.link.findMany()
+        },
     },
     Mutation: {
-        createLink: (parent, args) => {
+        createLink: (parent, args, context) => {
             const link = {
-                id: `link-${links.length}`,
                 description: args.description,
                 url: args.url,
             }
-            links.push(link)
-            return link
+            return context.prisma.link.create({
+                data: link,
+            })
         },
-        updateLink: (parent, args) => {
-            let linksMap = new Map(links.map((o) => [o.id, o]));
-            let link = linksMap.get(args.id);
+        updateLink: async (parent, args, context) => {
+            const { id, url, description } = args
+            const link = await context.prisma.link.update({
+                where: {
+                    id
+                },
+                data: {
+                  url,
+                  description
+                }
+              })
             if (link) {
-                if (args.url &&
-                    args.url !== link.url) {
-                    link.url = args.url;
-                }
-                if (args.description &&
-                    args.description !== link.description) {
-                    link.description = args.description;
-                }
-                linksMap.set(args.id, link);
-                links = Array.from(linksMap.values());
                 return link;
             }
         },
-        deleteLink: (parent, args) => {
-            let linksMap = new Map(links.map((l) => [l.id, l]));
-            const link = linksMap.get(args.id);
+        deleteLink: async (parent, args, context) => {
+            const { id } = args
+            const link = await context.prisma.link.delete({
+                where: {
+                    id
+                }
+              })
             if (link) {
-                linksMap.delete(args.id);
-                links = Array.from(linksMap.values());
                 return link
             }
         }
@@ -55,12 +52,16 @@ const resolvers = {
     }
 }
 
+const prisma = new PrismaClient()
 const server = new ApolloServer({
     typeDefs: fs.readFileSync(
         path.join(__dirname, 'schema.graphql'),
         'utf-8'
     ),
     resolvers,
+    context: {
+        prisma,
+    }
 })
 
 server

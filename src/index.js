@@ -2,54 +2,17 @@ const { ApolloServer } = require('apollo-server')
 const { PrismaClient } = require('@prisma/client')
 const fs = require('fs')
 const path = require('path')
+const Query = require('./resolvers/Query')
+const Mutation = require('./resolvers/Mutation')
+const Link = require('./resolvers/Link')
+const User = require('./resolvers/User')
+const { getUserId } = require('./utils')
 
 const resolvers = {
-    Query: {
-        info: () => 'This is a sample API cloning Hackernews',
-        feed: async (parent, args, context) => {
-            return context.prisma.link.findMany()
-        },
-    },
-    Mutation: {
-        createLink: (parent, args, context) => {
-            const link = {
-                description: args.description,
-                url: args.url,
-            }
-            return context.prisma.link.create({
-                data: link,
-            })
-        },
-        updateLink: async (parent, args, context) => {
-            const { id, url, description } = args
-            const link = await context.prisma.link.update({
-                where: {
-                    id
-                },
-                data: {
-                  url,
-                  description
-                }
-              })
-            if (link) {
-                return link;
-            }
-        },
-        deleteLink: async (parent, args, context) => {
-            const { id } = args
-            const link = await context.prisma.link.delete({
-                where: {
-                    id
-                }
-              })
-            if (link) {
-                return link
-            }
-        }
-    },
-    Link: {
-        description: (parent) => parent.description.replace(/[a|e|i|o|u]/ig, '')
-    }
+    Query,
+    Mutation,
+    Link,
+    User,
 }
 
 const prisma = new PrismaClient()
@@ -59,8 +22,14 @@ const server = new ApolloServer({
         'utf-8'
     ),
     resolvers,
-    context: {
-        prisma,
+    context: ({ req }) => {
+        return {
+            ...req,
+            prisma,
+            userId:
+              req && req.headers.authorization
+                ? getUserId(req) : null
+        };
     }
 })
 

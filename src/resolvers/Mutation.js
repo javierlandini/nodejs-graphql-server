@@ -47,10 +47,13 @@ function createLink(parent, args, context) {
 async function updateLink(parent, args, context) {
     const { userId } = context;
     const { id, url, description } = args
-    const link = await context.prisma.link.update({
+    let link = await context.prisma.link.findUnique({ where : { id } })
+    if (!link || link.postedById != userId) {
+        throw new Error('No link found')
+    }
+    link = await context.prisma.link.update({
         where: {
             id,
-            postedById: userId,
         },
         data: {
           url,
@@ -65,10 +68,13 @@ async function updateLink(parent, args, context) {
 async function deleteLink(parent, args, context) {
     const { userId } = context
     const { id } = args
-    const link = await context.prisma.link.delete({
+    let link = await context.prisma.link.findUnique({ where : { id } })
+    if (!link || link.postedById != userId) {
+        throw new Error('No link found')
+    }
+    link = await context.prisma.link.delete({
         where: {
             id,
-            postedById: userId,
         }
       })
     if (link) {
